@@ -70,7 +70,7 @@ export async function runAgentTurn(params: {
   accountId: string;
   userMessageText: string;
 }): Promise<AgentTurnResult> {
-  const { conversationId, userId, locationId, accountId, userMessageText } = params;
+  const { conversationId, locationId, accountId, userMessageText } = params;
 
   const location = await prisma.location.findUniqueOrThrow({ where: { id: locationId } });
 

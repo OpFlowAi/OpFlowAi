@@ -18,6 +18,7 @@ export async function createTask(
     type?: TaskType;
     priority?: TaskPriority;
     dueDate?: Date;
+    checklistLabels?: string[];
   }
 ) {
   return prisma.task.create({
@@ -29,6 +30,9 @@ export async function createTask(
       type: input.type ?? "GENERAL",
       priority: input.priority ?? "MEDIUM",
       dueDate: input.dueDate,
+      checklistItems: input.checklistLabels?.length
+        ? { create: input.checklistLabels.map((label, i) => ({ label, sortOrder: i })) }
+        : undefined,
     },
   });
 }
@@ -38,4 +42,9 @@ export async function setTaskStatus(id: string, status: TaskStatus) {
     where: { id },
     data: { status, resolvedAt: status === "DONE" ? new Date() : null },
   });
+}
+
+export async function toggleChecklistItem(id: string) {
+  const item = await prisma.taskChecklistItem.findUniqueOrThrow({ where: { id } });
+  return prisma.taskChecklistItem.update({ where: { id }, data: { isDone: !item.isDone } });
 }

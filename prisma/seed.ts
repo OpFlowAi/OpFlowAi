@@ -81,7 +81,7 @@ async function main() {
     },
   });
 
-  const platformAdmin = await prisma.user.create({
+  await prisma.user.create({
     data: {
       accountId: null,
       email: "admin@opsflow.ai",

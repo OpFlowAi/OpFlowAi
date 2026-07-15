@@ -34,6 +34,15 @@ export async function requireLocationAccess(locationId: string) {
   return session;
 }
 
+/** Throws unless the session's user is an account-wide admin (owner/admin/platform admin). */
+export async function requireAccountAdmin() {
+  const session = await requireSession();
+  if (!ACCOUNT_WIDE_ROLES.has(session.user.role)) {
+    throw new ForbiddenError("Only account admins can do that");
+  }
+  return session;
+}
+
 /** All location IDs the session's user may see, scoped to their account. */
 export async function accessibleLocationIds(session: Awaited<ReturnType<typeof requireSession>>) {
   if (ACCOUNT_WIDE_ROLES.has(session.user.role)) {

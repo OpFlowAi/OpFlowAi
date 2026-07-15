@@ -45,6 +45,22 @@ export async function listStaffMembers(locationId: string) {
   return prisma.staffMember.findMany({ where: { locationId }, orderBy: { name: "asc" } });
 }
 
+export async function createStaffMember(
+  locationId: string,
+  input: { name: string; title?: string; hourlyRate: number; employmentType?: "FULL_TIME" | "PART_TIME" }
+) {
+  return prisma.staffMember.create({
+    data: {
+      locationId,
+      name: input.name,
+      title: input.title,
+      hourlyRate: input.hourlyRate,
+      employmentType: input.employmentType ?? "PART_TIME",
+      hiredAt: new Date(),
+    },
+  });
+}
+
 /** All shifts for every staff member at a location within [from, to), for the weekly schedule grid. */
 export async function getShiftsInRange(locationId: string, from: Date, to: Date) {
   const [staff, shifts] = await Promise.all([
