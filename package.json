@@ -1,0 +1,49 @@
+{
+  "name": "opflow-ai",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "db:generate": "prisma generate",
+    "db:push": "prisma db push",
+    "db:migrate": "prisma migrate dev",
+    "db:seed": "tsx prisma/seed.ts"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.111.0",
+    "@prisma/client": "^6.19.3",
+    "bcryptjs": "^3.0.3",
+    "clsx": "^2.1.1",
+    "date-fns": "^4.4.0",
+    "dotenv": "^17.4.2",
+    "googleapis": "^173.0.0",
+    "intuit-oauth": "^4.2.3",
+    "lucide-react": "^1.24.0",
+    "next": "15.5.20",
+    "next-auth": "^5.0.0-beta.31",
+    "node-quickbooks": "^2.0.50",
+    "plaid": "^43.0.0",
+    "prisma": "^6.19.3",
+    "react": "19.0.0",
+    "react-dom": "19.0.0",
+    "react-plaid-link": "^4.1.1",
+    "recharts": "^3.9.2",
+    "zod": "^4.4.3",
+    "zustand": "^5.0.14"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "15.5.20",
+    "playwright": "^1.61.1",
+    "tailwindcss": "^4",
+    "tsx": "^4.23.1",
+    "typescript": "^5"
+  }
+}

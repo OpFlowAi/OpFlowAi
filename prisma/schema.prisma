@@ -1,0 +1,741 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Accounts, Locations, Users & Access
+// ---------------------------------------------------------------------------
+
+enum AccountStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+/// A paying customer of OpsFlow AI - typically a chain operating multiple locations.
+/// Created by OpsFlow staff (admin-provisioned), never via public signup.
+model Account {
+  id        String        @id @default(cuid())
+  name      String
+  status    AccountStatus @default(ACTIVE)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  locations           Location[]
+  users               User[]
+  suppliers           Supplier[]
+  complianceItems     ComplianceItem[]
+  inventoryCategories InventoryCategory[]
+  auditLogs           AuditLog[]
+
+  @@map("accounts")
+}
+
+enum LocationType {
+  GAS_STATION
+  TRUCK_STOP
+  GROCERY_STORE
+}
+
+enum LocationStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum ReorderApprovalMode {
+  AUTOMATIC
+  DRAFT_APPROVAL
+}
+
+model Location {
+  id                  String              @id @default(cuid())
+  accountId           String
+  account             Account             @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  name                String
+  type                LocationType
+  status              LocationStatus      @default(ACTIVE)
+  addressLine1        String?
+  addressLine2        String?
+  city                String?
+  state               String?
+  postalCode          String?
+  timezone            String              @default("America/Chicago")
+  reorderApprovalMode ReorderApprovalMode @default(DRAFT_APPROVAL)
+  openedAt            DateTime?
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+
+  locationAccess  LocationAccess[]
+  inventoryItems  InventoryItem[]
+  purchaseOrders  PurchaseOrder[]
+  staffMembers    StaffMember[]
+  shifts          Shift[]
+  bankAccounts    BankAccount[]
+  plaidItems      PlaidItem[]
+  complianceItems ComplianceItem[]
+  tasks           Task[]
+  alerts          Alert[]
+  integrations    IntegrationConnection[]
+  conversations   Conversation[]
+  revenueEntries  RevenueEntry[]
+  agentActions    AgentAction[]
+
+  @@index([accountId])
+  @@map("locations")
+}
+
+enum UserRole {
+  PLATFORM_ADMIN
+  OWNER
+  ADMIN
+  MANAGER
+  STAFF
+}
+
+enum UserStatus {
+  ACTIVE
+  INVITED
+  DISABLED
+}
+
+/// Users are provisioned by OpsFlow staff or an account Owner/Admin - there is no public signup.
+model User {
+  id           String     @id @default(cuid())
+  accountId    String?
+  account      Account?   @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  email        String     @unique
+  passwordHash String
+  name         String
+  role         UserRole   @default(STAFF)
+  status       UserStatus @default(ACTIVE)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  locationAccess          LocationAccess[]
+  staffProfile            StaffMember?
+  conversations           Conversation[]
+  createdPurchaseOrders   PurchaseOrder[]         @relation("PO_CreatedBy")
+  approvedPurchaseOrders  PurchaseOrder[]         @relation("PO_ApprovedBy")
+  decidedTimeOffRequests  TimeOffRequest[]        @relation("TimeOff_DecidedBy")
+  completedComplianceLogs ComplianceLog[]
+  createdTasks            Task[]                  @relation("Task_CreatedBy")
+  assignedTasks           Task[]                  @relation("Task_AssignedTo")
+  connectedIntegrations   IntegrationConnection[]
+  decidedAgentActions     AgentAction[]
+  auditLogs               AuditLog[]
+
+  @@index([accountId])
+  @@map("users")
+}
+
+/// Explicit per-location scoping. Owners/Admins get a row per location at
+/// creation time; Managers/Staff are scoped to the locations they work.
+model LocationAccess {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  locationId String
+  location   Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+
+  @@unique([userId, locationId])
+  @@index([locationId])
+  @@map("location_access")
+}
+
+// ---------------------------------------------------------------------------
+// Inventory
+// ---------------------------------------------------------------------------
+
+model InventoryCategory {
+  id        String   @id @default(cuid())
+  accountId String
+  account   Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  name      String
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+
+  items InventoryItem[]
+
+  @@unique([accountId, name])
+  @@map("inventory_categories")
+}
+
+model InventoryItem {
+  id                  String            @id @default(cuid())
+  locationId          String
+  location            Location          @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  categoryId          String
+  category            InventoryCategory @relation(fields: [categoryId], references: [id])
+  sku                 String?
+  name                String
+  unit                String            @default("unit")
+  currentStock        Decimal           @default(0) @db.Decimal(12, 2)
+  parLevel            Decimal           @default(0) @db.Decimal(12, 2)
+  reorderPoint        Decimal           @default(0) @db.Decimal(12, 2)
+  reorderQuantity     Decimal           @default(0) @db.Decimal(12, 2)
+  unitCost            Decimal           @default(0) @db.Decimal(12, 2)
+  autoReorderEnabled  Boolean? // null = inherit location default
+  preferredSupplierId String?
+  preferredSupplier   Supplier?         @relation(fields: [preferredSupplierId], references: [id])
+  lastCountedAt       DateTime?
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+
+  purchaseOrderItems PurchaseOrderItem[]
+
+  @@index([locationId])
+  @@index([categoryId])
+  @@map("inventory_items")
+}
+
+enum PurchaseOrderStatus {
+  DRAFT
+  PENDING_APPROVAL
+  APPROVED
+  ORDERED
+  RECEIVED
+  CANCELLED
+}
+
+enum PurchaseOrderSource {
+  MANUAL
+  AUTO_REORDER
+  AGENT
+}
+
+model PurchaseOrder {
+  id           String              @id @default(cuid())
+  locationId   String
+  location     Location            @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  supplierId   String
+  supplier     Supplier            @relation(fields: [supplierId], references: [id])
+  status       PurchaseOrderStatus @default(DRAFT)
+  source       PurchaseOrderSource @default(MANUAL)
+  createdById  String?
+  createdBy    User?               @relation("PO_CreatedBy", fields: [createdById], references: [id])
+  approvedById String?
+  approvedBy   User?               @relation("PO_ApprovedBy", fields: [approvedById], references: [id])
+  orderedAt    DateTime?
+  expectedAt   DateTime?
+  receivedAt   DateTime?
+  totalCost    Decimal             @default(0) @db.Decimal(12, 2)
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+
+  items PurchaseOrderItem[]
+
+  @@index([locationId])
+  @@index([supplierId])
+  @@map("purchase_orders")
+}
+
+model PurchaseOrderItem {
+  id              String        @id @default(cuid())
+  purchaseOrderId String
+  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  inventoryItemId String
+  inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id])
+  quantity        Decimal       @db.Decimal(12, 2)
+  unitCost        Decimal       @db.Decimal(12, 2)
+
+  @@map("purchase_order_items")
+}
+
+model Supplier {
+  id           String   @id @default(cuid())
+  accountId    String
+  account      Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  name         String
+  contactName  String?
+  email        String?
+  phone        String?
+  leadTimeDays Int      @default(3)
+  rating       Decimal  @default(0) @db.Decimal(2, 1)
+  category     String?
+  notes        String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  inventoryItems InventoryItem[]
+  purchaseOrders PurchaseOrder[]
+
+  @@index([accountId])
+  @@map("suppliers")
+}
+
+// ---------------------------------------------------------------------------
+// Staffing
+// ---------------------------------------------------------------------------
+
+enum EmploymentType {
+  FULL_TIME
+  PART_TIME
+}
+
+enum StaffStatus {
+  ACTIVE
+  INACTIVE
+}
+
+model StaffMember {
+  id             String         @id @default(cuid())
+  locationId     String
+  location       Location       @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  userId         String?        @unique
+  user           User?          @relation(fields: [userId], references: [id])
+  name           String
+  title          String?
+  hourlyRate     Decimal        @db.Decimal(8, 2)
+  employmentType EmploymentType @default(PART_TIME)
+  status         StaffStatus    @default(ACTIVE)
+  hiredAt        DateTime?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  shifts          Shift[]
+  timeOffRequests TimeOffRequest[]
+
+  @@index([locationId])
+  @@map("staff_members")
+}
+
+enum ShiftStatus {
+  SCHEDULED
+  COMPLETED
+  NO_SHOW
+  CANCELLED
+}
+
+model Shift {
+  id            String      @id @default(cuid())
+  locationId    String
+  location      Location    @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  staffMemberId String
+  staffMember   StaffMember @relation(fields: [staffMemberId], references: [id], onDelete: Cascade)
+  position      String?
+  startTime     DateTime
+  endTime       DateTime
+  status        ShiftStatus @default(SCHEDULED)
+  notes         String?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@index([locationId, startTime])
+  @@index([staffMemberId])
+  @@map("shifts")
+}
+
+enum TimeOffStatus {
+  PENDING
+  APPROVED
+  DENIED
+}
+
+model TimeOffRequest {
+  id            String        @id @default(cuid())
+  staffMemberId String
+  staffMember   StaffMember   @relation(fields: [staffMemberId], references: [id], onDelete: Cascade)
+  startDate     DateTime
+  endDate       DateTime
+  reason        String?
+  status        TimeOffStatus @default(PENDING)
+  requestedAt   DateTime      @default(now())
+  decidedById   String?
+  decidedBy     User?         @relation("TimeOff_DecidedBy", fields: [decidedById], references: [id])
+  decidedAt     DateTime?
+
+  @@index([staffMemberId])
+  @@map("time_off_requests")
+}
+
+// ---------------------------------------------------------------------------
+// Banking (Plaid) - read only
+// ---------------------------------------------------------------------------
+
+enum PlaidItemStatus {
+  ACTIVE
+  ERROR
+  DISCONNECTED
+}
+
+model PlaidItem {
+  id              String          @id @default(cuid())
+  locationId      String
+  location        Location        @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  itemId          String          @unique
+  accessTokenEnc  String
+  institutionName String?
+  status          PlaidItemStatus @default(ACTIVE)
+  lastSyncedAt    DateTime?
+  createdAt       DateTime        @default(now())
+
+  bankAccounts BankAccount[]
+
+  @@index([locationId])
+  @@map("plaid_items")
+}
+
+model BankAccount {
+  id               String    @id @default(cuid())
+  locationId       String
+  location         Location  @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  plaidItemId      String
+  plaidItem        PlaidItem @relation(fields: [plaidItemId], references: [id], onDelete: Cascade)
+  plaidAccountId   String    @unique
+  name             String
+  mask             String?
+  type             String?
+  subtype          String?
+  currentBalance   Decimal   @default(0) @db.Decimal(14, 2)
+  availableBalance Decimal?  @db.Decimal(14, 2)
+  isoCurrencyCode  String    @default("USD")
+  updatedAt        DateTime  @updatedAt
+
+  transactions Transaction[]
+
+  @@index([locationId])
+  @@map("bank_accounts")
+}
+
+model Transaction {
+  id                 String      @id @default(cuid())
+  bankAccountId      String
+  bankAccount        BankAccount @relation(fields: [bankAccountId], references: [id], onDelete: Cascade)
+  plaidTransactionId String      @unique
+  amount             Decimal     @db.Decimal(14, 2)
+  isoCurrencyCode    String      @default("USD")
+  date               DateTime
+  name               String
+  merchantName       String?
+  category           String?
+  pending            Boolean     @default(false)
+  createdAt          DateTime    @default(now())
+
+  @@index([bankAccountId, date])
+  @@map("transactions")
+}
+
+// ---------------------------------------------------------------------------
+// Revenue (POS / sales, drives the Home dashboard - distinct from banking cash flow)
+// ---------------------------------------------------------------------------
+
+enum RevenueSource {
+  MANUAL
+  QUICKBOOKS
+  POS_SYNC
+}
+
+model RevenueEntry {
+  id               String        @id @default(cuid())
+  locationId       String
+  location         Location      @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  date             DateTime      @db.Date
+  grossRevenue     Decimal       @db.Decimal(14, 2)
+  transactionCount Int           @default(0)
+  source           RevenueSource @default(MANUAL)
+  createdAt        DateTime      @default(now())
+
+  @@unique([locationId, date, source])
+  @@index([locationId, date])
+  @@map("revenue_entries")
+}
+
+// ---------------------------------------------------------------------------
+// Compliance
+// ---------------------------------------------------------------------------
+
+enum ComplianceFrequency {
+  DAILY
+  WEEKLY
+  MONTHLY
+  QUARTERLY
+  ANNUAL
+}
+
+enum ComplianceStatus {
+  UPCOMING
+  DUE_SOON
+  OVERDUE
+  COMPLETED
+}
+
+model ComplianceItem {
+  id              String              @id @default(cuid())
+  accountId       String
+  account         Account             @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  locationId      String
+  location        Location            @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  title           String
+  category        String
+  frequency       ComplianceFrequency
+  instructions    String?
+  nextDueDate     DateTime
+  status          ComplianceStatus    @default(UPCOMING)
+  lastCompletedAt DateTime?
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  logs ComplianceLog[]
+
+  @@index([locationId])
+  @@index([accountId])
+  @@map("compliance_items")
+}
+
+model ComplianceLog {
+  id               String         @id @default(cuid())
+  complianceItemId String
+  complianceItem   ComplianceItem @relation(fields: [complianceItemId], references: [id], onDelete: Cascade)
+  completedAt      DateTime       @default(now())
+  completedById    String?
+  completedBy      User?          @relation(fields: [completedById], references: [id])
+  passed           Boolean        @default(true)
+  notes            String?
+
+  @@index([complianceItemId])
+  @@map("compliance_logs")
+}
+
+// ---------------------------------------------------------------------------
+// Task Workflow (checklists, maintenance tickets, incident reports)
+// ---------------------------------------------------------------------------
+
+enum TaskType {
+  CHECKLIST
+  MAINTENANCE
+  INCIDENT
+  GENERAL
+}
+
+enum TaskStatus {
+  OPEN
+  IN_PROGRESS
+  DONE
+  CANCELLED
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+model Task {
+  id           String       @id @default(cuid())
+  locationId   String
+  location     Location     @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  type         TaskType     @default(GENERAL)
+  title        String
+  description  String?
+  status       TaskStatus   @default(OPEN)
+  priority     TaskPriority @default(MEDIUM)
+  createdById  String?
+  createdBy    User?        @relation("Task_CreatedBy", fields: [createdById], references: [id])
+  assignedToId String?
+  assignedTo   User?        @relation("Task_AssignedTo", fields: [assignedToId], references: [id])
+  dueDate      DateTime?
+  metadata     Json?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  resolvedAt   DateTime?
+
+  checklistItems TaskChecklistItem[]
+
+  @@index([locationId])
+  @@index([assignedToId])
+  @@map("tasks")
+}
+
+model TaskChecklistItem {
+  id        String  @id @default(cuid())
+  taskId    String
+  task      Task    @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  label     String
+  isDone    Boolean @default(false)
+  sortOrder Int     @default(0)
+
+  @@map("task_checklist_items")
+}
+
+// ---------------------------------------------------------------------------
+// Alerts (cross-category notification feed)
+// ---------------------------------------------------------------------------
+
+enum AlertCategory {
+  INVENTORY
+  STAFFING
+  COMPLIANCE
+  BANKING
+  TASK
+  SUPPLIER
+  SYSTEM
+}
+
+enum AlertSeverity {
+  INFO
+  WARNING
+  CRITICAL
+}
+
+model Alert {
+  id         String        @id @default(cuid())
+  locationId String
+  location   Location      @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  category   AlertCategory
+  severity   AlertSeverity @default(INFO)
+  title      String
+  message    String
+  isRead     Boolean       @default(false)
+  sourceType String?
+  sourceId   String?
+  createdAt  DateTime      @default(now())
+
+  @@index([locationId, isRead])
+  @@map("alerts")
+}
+
+// ---------------------------------------------------------------------------
+// Integrations (QuickBooks, Google Sheets - Plaid tracked via PlaidItem above)
+// ---------------------------------------------------------------------------
+
+enum IntegrationProvider {
+  QUICKBOOKS
+  GOOGLE_SHEETS
+}
+
+enum IntegrationStatus {
+  CONNECTED
+  DISCONNECTED
+  ERROR
+}
+
+model IntegrationConnection {
+  id              String              @id @default(cuid())
+  locationId      String
+  location        Location            @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  provider        IntegrationProvider
+  status          IntegrationStatus   @default(DISCONNECTED)
+  externalId      String?
+  accessTokenEnc  String?
+  refreshTokenEnc String?
+  expiresAt       DateTime?
+  metadata        Json?
+  connectedById   String?
+  connectedBy     User?               @relation(fields: [connectedById], references: [id])
+  lastSyncedAt    DateTime?
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  @@unique([locationId, provider])
+  @@map("integration_connections")
+}
+
+// ---------------------------------------------------------------------------
+// AI Agent - persistent conversations, tool calls, confirmable actions
+// ---------------------------------------------------------------------------
+
+enum MessageRole {
+  USER
+  ASSISTANT
+  TOOL
+}
+
+model Conversation {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  locationId String
+  location   Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  title      String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  messages     Message[]
+  agentActions AgentAction[]
+
+  @@index([userId])
+  @@index([locationId])
+  @@map("conversations")
+}
+
+model Message {
+  id             String       @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  role           MessageRole
+  content        String
+  toolCalls      Json?
+  toolResults    Json?
+  createdAt      DateTime     @default(now())
+
+  agentActions AgentAction[]
+
+  @@index([conversationId, createdAt])
+  @@map("messages")
+}
+
+enum AgentActionType {
+  ADD_TASK
+  LOG_TIME_OFF
+  MARK_ITEM_REORDERED
+  CREATE_PURCHASE_ORDER
+  APPROVE_PURCHASE_ORDER
+  COMPLETE_COMPLIANCE_ITEM
+}
+
+enum AgentActionStatus {
+  PENDING_CONFIRMATION
+  CONFIRMED
+  REJECTED
+  EXECUTED
+  FAILED
+}
+
+/// Actions the agent proposes that mutate data always land here first and
+/// require explicit user confirmation before `execute()` is called.
+model AgentAction {
+  id             String            @id @default(cuid())
+  conversationId String
+  conversation   Conversation      @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  messageId      String?
+  message        Message?          @relation(fields: [messageId], references: [id])
+  locationId     String
+  location       Location          @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  actionType     AgentActionType
+  payload        Json
+  status         AgentActionStatus @default(PENDING_CONFIRMATION)
+  resultSummary  String?
+  decidedById    String?
+  decidedBy      User?             @relation(fields: [decidedById], references: [id])
+  createdAt      DateTime          @default(now())
+  decidedAt      DateTime?
+
+  @@index([conversationId])
+  @@map("agent_actions")
+}
+
+// ---------------------------------------------------------------------------
+// Audit log
+// ---------------------------------------------------------------------------
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  accountId  String?
+  account    Account? @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id])
+  action     String
+  entityType String
+  entityId   String
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  @@index([accountId])
+  @@map("audit_logs")
+}

@@ -1,0 +1,99 @@
+@import "tailwindcss";
+
+:root {
+  --background: #0a0a12;
+  --surface: #131320;
+  --surface-2: #1b1b2e;
+  --surface-hover: #21213a;
+  --border: #2a2a42;
+  --border-strong: #3a3a5c;
+  --foreground: #f5f4fb;
+  --muted: #a3a1c2;
+  --muted-2: #7a7896;
+
+  --brand-purple: #8b5cf6;
+  --brand-indigo: #6366f1;
+  --brand-blue: #3b82f6;
+  --gradient-brand: linear-gradient(135deg, #a855f7 0%, #6366f1 55%, #2563eb 100%);
+  --gradient-brand-soft: linear-gradient(135deg, rgba(168, 85, 247, 0.16) 0%, rgba(99, 102, 241, 0.16) 55%, rgba(37, 99, 235, 0.16) 100%);
+
+  --success: #0ca30c;
+  --warning: #fab219;
+  --serious: #ec835a;
+  --danger: #d03b3b;
+  --info: #38bdf8;
+
+  /* dataviz: fixed categorical order (never cycle/reorder per-chart) */
+  --chart-1: #3987e5; /* blue */
+  --chart-2: #008300; /* green */
+  --chart-3: #d55181; /* magenta */
+  --chart-4: #c98500; /* yellow */
+  --chart-5: #199e70; /* aqua */
+  --chart-6: #d95926; /* orange */
+  --chart-7: #9085e9; /* violet */
+  --chart-8: #e66767; /* red */
+  --chart-sequential: #3987e5; /* single-hue magnitude ramp, e.g. revenue trend */
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-hover: var(--surface-hover);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-muted: var(--muted);
+  --color-muted-2: var(--muted-2);
+  --color-brand-purple: var(--brand-purple);
+  --color-brand-indigo: var(--brand-indigo);
+  --color-brand-blue: var(--brand-blue);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-serious: var(--serious);
+  --color-danger: var(--danger);
+  --color-info: var(--info);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  background: var(--background);
+  background-image:
+    radial-gradient(ellipse 80% 50% at 20% -10%, rgba(139, 92, 246, 0.15), transparent),
+    radial-gradient(ellipse 60% 40% at 100% 0%, rgba(37, 99, 235, 0.12), transparent);
+  background-attachment: fixed;
+  color: var(--foreground);
+}
+
+.gradient-brand {
+  background-image: var(--gradient-brand);
+}
+
+.gradient-brand-text {
+  background-image: var(--gradient-brand);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.card-surface {
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
