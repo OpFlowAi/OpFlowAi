@@ -22,7 +22,7 @@ export default async function BankingPage() {
     return (
       <div className="flex flex-col gap-6">
         <div>
-          <h1 className="text-2xl font-semibold text-foreground">Banking</h1>
+          <h1 className="text-2xl font-extrabold text-foreground tracking-tight">Banking</h1>
           <p className="text-sm text-muted mt-1">{location.name}</p>
         </div>
         <Card className="flex flex-col items-center gap-4 py-16 text-center">
@@ -51,7 +51,7 @@ export default async function BankingPage() {
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-foreground">Banking</h1>
+          <h1 className="text-2xl font-extrabold text-foreground tracking-tight">Banking</h1>
           <p className="text-sm text-muted mt-1">
             {location.name} &middot; Read-only via Plaid &middot; Last synced{" "}
             {summary.accounts[0]?.lastSyncedAt ? new Date(summary.accounts[0].lastSyncedAt).toLocaleString() : "never"}

@@ -75,7 +75,7 @@ export default async function DashboardPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-semibold text-foreground">{location.name}</h1>
+        <h1 className="text-2xl font-extrabold text-foreground tracking-tight">{location.name}</h1>
         <p className="text-sm text-muted mt-1">
           {LOCATION_TYPE_LABEL[location.type]}
           {location.city ? ` · ${location.city}, ${location.state}` : ""}

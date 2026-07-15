@@ -9,7 +9,7 @@ export default async function AgentPage() {
   return (
     <div className="flex h-[calc(100vh-6.5rem)] flex-col">
       <div className="mb-4">
-        <h1 className="text-2xl font-semibold text-foreground">AI Agent</h1>
+        <h1 className="text-2xl font-extrabold text-foreground tracking-tight">AI Agent</h1>
         <p className="text-sm text-muted mt-1">
           Ask about {location.name}&apos;s data, or ask me to take action - I&apos;ll always check with you first.
         </p>

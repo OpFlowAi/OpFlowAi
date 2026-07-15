@@ -1,27 +1,30 @@
 @import "tailwindcss";
 
 :root {
-  --background: #0a0a12;
-  --surface: #131320;
-  --surface-2: #1b1b2e;
-  --surface-hover: #21213a;
-  --border: #2a2a42;
-  --border-strong: #3a3a5c;
-  --foreground: #f5f4fb;
-  --muted: #a3a1c2;
-  --muted-2: #7a7896;
+  /* Synced from the "OpsFlow AI Dashboard Design" Claude Design project. */
+  --background: oklch(0.145 0.012 275);
+  --surface: oklch(0.18 0.014 275);
+  --surface-2: oklch(0.2 0.015 275);
+  --surface-hover: oklch(0.22 0.016 275);
+  --border: oklch(1 0 0 / 0.08);
+  --border-strong: oklch(1 0 0 / 0.16);
+  --foreground: oklch(0.96 0.005 275);
+  --muted: oklch(0.7 0.01 275);
+  --muted-2: oklch(0.55 0.01 275);
 
-  --brand-purple: #8b5cf6;
-  --brand-indigo: #6366f1;
-  --brand-blue: #3b82f6;
-  --gradient-brand: linear-gradient(135deg, #a855f7 0%, #6366f1 55%, #2563eb 100%);
-  --gradient-brand-soft: linear-gradient(135deg, rgba(168, 85, 247, 0.16) 0%, rgba(99, 102, 241, 0.16) 55%, rgba(37, 99, 235, 0.16) 100%);
+  --brand-pink: oklch(0.62 0.24 350);
+  --brand-purple: oklch(0.5 0.22 300);
+  --brand-indigo: oklch(0.5 0.23 315);
+  --brand-blue: oklch(0.44 0.19 285);
+  --gradient-brand: linear-gradient(135deg, var(--brand-pink), var(--brand-purple));
+  --gradient-brand-hero: linear-gradient(135deg, oklch(0.6 0.24 350), var(--brand-indigo) 55%, var(--brand-blue));
+  --gradient-brand-soft: linear-gradient(135deg, oklch(0.62 0.24 350 / 0.16), oklch(0.5 0.22 300 / 0.16));
 
-  --success: #0ca30c;
-  --warning: #fab219;
-  --serious: #ec835a;
-  --danger: #d03b3b;
-  --info: #38bdf8;
+  --success: oklch(0.7 0.17 150);
+  --warning: oklch(0.75 0.16 80);
+  --serious: oklch(0.78 0.16 80);
+  --danger: oklch(0.72 0.19 350);
+  --info: oklch(0.7 0.17 250);
 
   /* dataviz: fixed categorical order (never cycle/reorder per-chart) */
   --chart-1: #3987e5; /* blue */
@@ -32,7 +35,7 @@
   --chart-6: #d95926; /* orange */
   --chart-7: #9085e9; /* violet */
   --chart-8: #e66767; /* red */
-  --chart-sequential: #3987e5; /* single-hue magnitude ramp, e.g. revenue trend */
+  --chart-sequential: oklch(0.68 0.19 250); /* single-hue magnitude ramp, e.g. revenue trend - matches design */
 }
 
 @theme inline {
@@ -48,12 +51,13 @@
   --color-brand-purple: var(--brand-purple);
   --color-brand-indigo: var(--brand-indigo);
   --color-brand-blue: var(--brand-blue);
+  --color-brand-pink: var(--brand-pink);
   --color-success: var(--success);
   --color-warning: var(--warning);
   --color-serious: var(--serious);
   --color-danger: var(--danger);
   --color-info: var(--info);
-  --font-sans: var(--font-geist-sans);
+  --font-sans: var(--font-manrope);
   --font-mono: var(--font-geist-mono);
 }
 
@@ -64,14 +68,19 @@ html {
 body {
   background: var(--background);
   background-image:
-    radial-gradient(ellipse 80% 50% at 20% -10%, rgba(139, 92, 246, 0.15), transparent),
-    radial-gradient(ellipse 60% 40% at 100% 0%, rgba(37, 99, 235, 0.12), transparent);
+    radial-gradient(ellipse 80% 50% at 20% -10%, oklch(0.62 0.24 350 / 0.12), transparent),
+    radial-gradient(ellipse 60% 40% at 100% 0%, oklch(0.5 0.22 300 / 0.12), transparent);
   background-attachment: fixed;
   color: var(--foreground);
+  font-family: var(--font-manrope), "Manrope", sans-serif;
 }
 
 .gradient-brand {
   background-image: var(--gradient-brand);
+}
+
+.gradient-brand-hero {
+  background-image: var(--gradient-brand-hero);
 }
 
 .gradient-brand-text {

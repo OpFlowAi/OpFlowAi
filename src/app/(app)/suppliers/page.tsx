@@ -27,7 +27,7 @@ export default async function SuppliersPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-semibold text-foreground">Suppliers</h1>
+        <h1 className="text-2xl font-extrabold text-foreground tracking-tight">Suppliers</h1>
         <p className="text-sm text-muted mt-1">{suppliers.length} vendors across your account</p>
       </div>
 

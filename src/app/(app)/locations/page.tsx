@@ -88,7 +88,7 @@ export default async function LocationsPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-semibold text-foreground">Location Management</h1>
+        <h1 className="text-2xl font-extrabold text-foreground tracking-tight">Location Management</h1>
         <p className="text-sm text-muted mt-1">{locations.length} locations on your account</p>
       </div>
 

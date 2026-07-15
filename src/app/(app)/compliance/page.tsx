@@ -21,7 +21,7 @@ export default async function CompliancePage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-semibold text-foreground">Compliance</h1>
+        <h1 className="text-2xl font-extrabold text-foreground tracking-tight">Compliance</h1>
         <p className="text-sm text-muted mt-1">{location.name} &middot; Inspections &amp; certifications</p>
       </div>
 
