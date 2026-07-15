@@ -370,6 +370,7 @@ model PlaidItem {
   itemId          String          @unique
   accessTokenEnc  String
   institutionName String?
+  institutionUrl  String?
   status          PlaidItemStatus @default(ACTIVE)
   lastSyncedAt    DateTime?
   createdAt       DateTime        @default(now())

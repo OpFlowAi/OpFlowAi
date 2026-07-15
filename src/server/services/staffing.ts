@@ -45,6 +45,52 @@ export async function listStaffMembers(locationId: string) {
   return prisma.staffMember.findMany({ where: { locationId }, orderBy: { name: "asc" } });
 }
 
+/** All shifts for every staff member at a location within [from, to), for the weekly schedule grid. */
+export async function getShiftsInRange(locationId: string, from: Date, to: Date) {
+  const [staff, shifts] = await Promise.all([
+    prisma.staffMember.findMany({ where: { locationId, status: "ACTIVE" }, orderBy: { name: "asc" } }),
+    prisma.shift.findMany({
+      where: { locationId, startTime: { gte: from, lt: to }, status: { not: "CANCELLED" } },
+      orderBy: { startTime: "asc" },
+    }),
+  ]);
+
+  let totalCost = 0;
+  const shiftsByStaff = new Map<string, typeof shifts>();
+  for (const staffMember of staff) shiftsByStaff.set(staffMember.id, []);
+  for (const shift of shifts) {
+    shiftsByStaff.get(shift.staffMemberId)?.push(shift);
+    const staffMember = staff.find((s) => s.id === shift.staffMemberId);
+    if (staffMember) {
+      const hours = differenceInMinutes(shift.endTime, shift.startTime) / 60;
+      totalCost += hours * Number(staffMember.hourlyRate);
+    }
+  }
+
+  return {
+    staff: staff.map((s) => ({ ...s, hourlyRate: Number(s.hourlyRate), shifts: shiftsByStaff.get(s.id) ?? [] })),
+    totalCost: Math.round(totalCost * 100) / 100,
+    totalShifts: shifts.length,
+  };
+}
+
+/** Scheduled labor hours per day in range, to flag thin-coverage days. */
+export async function getDailyCoverage(locationId: string, from: Date, to: Date) {
+  const shifts = await prisma.shift.findMany({
+    where: { locationId, startTime: { gte: from, lt: to }, status: { not: "CANCELLED" } },
+  });
+  const byDay = new Map<string, { hours: number; count: number }>();
+  for (const shift of shifts) {
+    const key = shift.startTime.toISOString().slice(0, 10);
+    const hours = differenceInMinutes(shift.endTime, shift.startTime) / 60;
+    const existing = byDay.get(key) ?? { hours: 0, count: 0 };
+    existing.hours += hours;
+    existing.count += 1;
+    byDay.set(key, existing);
+  }
+  return byDay;
+}
+
 export async function getPendingTimeOffRequests(locationId: string) {
   return prisma.timeOffRequest.findMany({
     where: { staffMember: { locationId }, status: "PENDING" },
