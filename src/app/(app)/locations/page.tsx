@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
-import { Plus } from "lucide-react";
+import Link from "next/link";
+import { Plus, UploadCloud } from "lucide-react";
 import { getActiveLocation } from "@/lib/active-location";
 import { requireAccountAdmin } from "@/lib/authz";
 import { listLocationsForAccount } from "@/server/services/locations";
@@ -87,9 +88,17 @@ export default async function LocationsPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-2xl font-extrabold text-foreground tracking-tight">Location Management</h1>
-        <p className="text-sm text-muted mt-1">{locations.length} locations on your account</p>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-extrabold text-foreground tracking-tight">Location Management</h1>
+          <p className="text-sm text-muted mt-1">{locations.length} locations on your account</p>
+        </div>
+        <Link
+          href="/locations/import"
+          className="flex items-center gap-2 rounded-xl border border-border bg-surface-2 px-3.5 py-2 text-sm font-bold hover:bg-surface-hover transition"
+        >
+          <UploadCloud size={15} /> Bulk import
+        </Link>
       </div>
 
       <Card>

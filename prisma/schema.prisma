@@ -31,6 +31,7 @@ model Account {
   complianceItems     ComplianceItem[]
   inventoryCategories InventoryCategory[]
   auditLogs           AuditLog[]
+  bulkImportJobs      BulkImportJob[]
 
   @@map("accounts")
 }
@@ -64,6 +65,10 @@ model Location {
   state               String?
   postalCode          String?
   timezone            String              @default("America/Chicago")
+  hasRestaurant       Boolean             @default(false)
+  contactName         String?
+  contactEmail        String?
+  contactPhone        String?
   reorderApprovalMode ReorderApprovalMode @default(DRAFT_APPROVAL)
   openedAt            DateTime?
   createdAt           DateTime            @default(now())
@@ -83,6 +88,7 @@ model Location {
   conversations   Conversation[]
   revenueEntries  RevenueEntry[]
   agentActions    AgentAction[]
+  bulkImportRows  BulkImportRow[]
 
   @@index([accountId])
   @@map("locations")
@@ -127,6 +133,7 @@ model User {
   connectedIntegrations   IntegrationConnection[]
   decidedAgentActions     AgentAction[]
   auditLogs               AuditLog[]
+  bulkImportJobs          BulkImportJob[]
 
   @@index([accountId])
   @@map("users")
@@ -739,4 +746,60 @@ model AuditLog {
 
   @@index([accountId])
   @@map("audit_logs")
+}
+
+// ---------------------------------------------------------------------------
+// Bulk location import (CSV upload, batch-checkpointed)
+// ---------------------------------------------------------------------------
+
+enum BulkImportStatus {
+  DRAFT
+  VALIDATING
+  READY
+  IMPORTING
+  COMPLETED
+}
+
+enum BulkImportRowStatus {
+  PENDING
+  VALID
+  INVALID
+  IMPORTED
+}
+
+model BulkImportJob {
+  id            String           @id @default(cuid())
+  accountId     String
+  account       Account          @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  createdById   String?
+  createdBy     User?            @relation(fields: [createdById], references: [id])
+  fileName      String
+  status        BulkImportStatus @default(DRAFT)
+  totalRows     Int
+  batchSize     Int              @default(100)
+  validatedThru Int              @default(0)
+  importedThru  Int              @default(0)
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  rows BulkImportRow[]
+
+  @@index([accountId])
+  @@map("bulk_import_jobs")
+}
+
+model BulkImportRow {
+  id                String              @id @default(cuid())
+  jobId             String
+  job               BulkImportJob       @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  rowNumber         Int
+  data              Json
+  status            BulkImportRowStatus @default(PENDING)
+  errors            Json?
+  createdLocationId String?
+  createdLocation   Location?           @relation(fields: [createdLocationId], references: [id])
+  createdAt         DateTime            @default(now())
+
+  @@index([jobId, rowNumber])
+  @@map("bulk_import_rows")
 }
